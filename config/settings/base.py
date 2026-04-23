@@ -1,9 +1,10 @@
 """Base settings shared across all environments."""
+import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = "django-insecure-change-me-in-production"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "django-insecure-change-me-in-production")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -64,6 +65,13 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.BasicAuthentication",
+    ],
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
     "DEFAULT_RENDERER_CLASSES": [
         "rest_framework.renderers.JSONRenderer",
     ],
