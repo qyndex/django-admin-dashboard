@@ -1,0 +1,170 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard Overview{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Welcome back, {{ request.user.first_name|default:request.user.username }}</h1>
+    <p>Here's what's happening across your organisation today.</p>
+</div>
+
+<!-- Summary Cards -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-label">Total Employees</div>
+        <div class="metric-value">{{ total_employees }}</div>
+        <div class="metric-change positive">{{ active_employees }} active</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Departments</div>
+        <div class="metric-value">{{ total_departments }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Projects</div>
+        <div class="metric-value">{{ total_projects }}</div>
+        <div class="metric-change positive">{{ active_projects }} active</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Active Budget</div>
+        <div class="metric-value">${{ total_budget|floatformat:0 }}</div>
+        <div class="metric-change">across active projects</div>
+    </div>
+</div>
+
+<!-- Database Metrics -->
+{% if metrics %}
+<div class="card" style="margin-bottom: 1.5rem;">
+    <div class="card-header">
+        <h3>Key Metrics</h3>
+        <a href="/api/metrics/" class="btn btn-sm btn-outline">API</a>
+    </div>
+    <div class="card-body">
+        <div class="metrics-grid">
+            {% for metric in metrics %}
+            <div class="metric-card" style="border: none; box-shadow: none; padding: 0.75rem;">
+                <div class="metric-label">{{ metric.name }}</div>
+                <div class="metric-value" style="font-size: 1.4rem;">
+                    {% if metric.name == "Total Revenue" or metric.name == "Active Budget" %}${% endif %}{{ metric.value|floatformat:0 }}{% if metric.name == "Customer Satisfaction" or metric.name == "Server Uptime" %}%{% endif %}
+                </div>
+                <div class="metric-change {% if metric.change_percent >= 0 %}positive{% else %}negative{% endif %}">
+                    {% if metric.change_percent >= 0 %}+{% endif %}{{ metric.change_percent }}% ({{ metric.get_period_display }})
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Two-column layout -->
+<div class="grid-2">
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Activity</h3>
+            <a href="{% url 'dashboard:activity-log' %}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        {% for activity in recent_activities %}
+        <div class="activity-item">
+            <span class="status status-{{ activity.action }}">{{ activity.get_action_display }}</span>
+            <span>
+                <span class="activity-user">{{ activity.user.get_full_name|default:activity.user.username }}</span>
+                &mdash; {{ activity.description|truncatechars:60 }}
+            </span>
+            <span class="activity-time">{{ activity.created_at|timesince }} ago</span>
+        </div>
+        {% empty %}
+        <div class="card-body">
+            <p style="color: var(--color-text-muted);">No activity recorded yet. Run <code>python manage.py seed_data</code> to populate demo data.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Notifications -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Notifications {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}</h3>
+            <a href="{% url 'dashboard:notifications' %}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        {% for notification in notifications %}
+        <div class="notification-item {% if not notification.read %}unread{% endif %}">
+            <div class="notification-dot {{ notification.level }}"></div>
+            <div class="notification-content">
+                <h4>{{ notification.title }}</h4>
+                <p>{{ notification.message|truncatechars:80 }}</p>
+            </div>
+            <span class="notification-time">{{ notification.created_at|timesince }} ago</span>
+        </div>
+        {% empty %}
+        <div class="card-body">
+            <p style="color: var(--color-text-muted);">No notifications. You're all caught up!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Department & Project Stats -->
+<div class="grid-2" style="margin-top: 1.5rem;">
+    <!-- Department Breakdown -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Employees by Department</h3>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Department</th>
+                        <th>Employees</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dept in dept_stats %}
+                    <tr>
+                        <td>{{ dept.name }}</td>
+                        <td>{{ dept.emp_count }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="2" style="color: var(--color-text-muted);">No departments yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recent Employees -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Recent Employees</h3>
+            <a href="{% url 'admin:dashboard_employee_changelist' %}" class="btn btn-sm btn-outline">Manage</a>
+        </div>
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Department</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for emp in recent_employees %}
+                    <tr>
+                        <td>{{ emp.user.get_full_name }}</td>
+                        <td>{{ emp.department.name|default:"--" }}</td>
+                        <td><span class="status status-{{ emp.status }}">{{ emp.get_status_display }}</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="color: var(--color-text-muted);">No employees yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

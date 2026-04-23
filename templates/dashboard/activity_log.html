@@ -1,0 +1,48 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Activity Log{% endblock %}
+{% block page_title %}Activity Log{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Activity Log</h1>
+    <p>Recent actions across the dashboard.</p>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3>All Activity</h3>
+        <a href="/api/activities/" class="btn btn-sm btn-outline">API</a>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Description</th>
+                    <th>IP Address</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for activity in activities %}
+                <tr>
+                    <td class="activity-user">{{ activity.user.get_full_name|default:activity.user.username }}</td>
+                    <td><span class="status status-{{ activity.action }}">{{ activity.get_action_display }}</span></td>
+                    <td>{{ activity.description|truncatechars:80 }}</td>
+                    <td style="font-family: monospace; font-size: 0.8rem;">{{ activity.ip_address|default:"--" }}</td>
+                    <td class="activity-time">{{ activity.created_at|timesince }} ago</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: 2rem;">
+                        No activity recorded yet. Run <code>python manage.py seed_data</code> to populate demo data.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

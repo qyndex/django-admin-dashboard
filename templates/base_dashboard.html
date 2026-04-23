@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block body %}
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <h2>Company</h2>
+            <small>Admin Dashboard</small>
+        </div>
+
+        <div class="sidebar-section">Main</div>
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{% url 'dashboard:home' %}" class="{% if request.resolver_match.url_name == 'home' %}active{% endif %}">
+                    <span class="nav-icon">&#9632;</span> Dashboard
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section">Management</div>
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{% url 'admin:dashboard_employee_changelist' %}">
+                    <span class="nav-icon">&#9679;</span> Employees
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'admin:dashboard_department_changelist' %}">
+                    <span class="nav-icon">&#9670;</span> Departments
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'admin:dashboard_project_changelist' %}">
+                    <span class="nav-icon">&#9733;</span> Projects
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section">Monitoring</div>
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{% url 'dashboard:activity-log' %}" class="{% if request.resolver_match.url_name == 'activity-log' %}active{% endif %}">
+                    <span class="nav-icon">&#8942;</span> Activity Log
+                </a>
+            </li>
+            <li>
+                <a href="{% url 'dashboard:notifications' %}" class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}">
+                    <span class="nav-icon">&#9993;</span> Notifications
+                    {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-section">System</div>
+        <ul class="sidebar-nav">
+            <li>
+                <a href="{% url 'admin:index' %}">
+                    <span class="nav-icon">&#9881;</span> Admin Panel
+                </a>
+            </li>
+            <li>
+                <a href="/api/">
+                    <span class="nav-icon">&#10094;&#10095;</span> API Browser
+                </a>
+            </li>
+        </ul>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <header class="topbar">
+            <div>
+                <strong>{% block page_title %}Dashboard{% endblock %}</strong>
+            </div>
+            <div class="topbar-right">
+                <a href="{% url 'dashboard:notifications' %}" title="Notifications">
+                    &#9993;
+                    {% if unread_count %}<span class="badge">{{ unread_count }}</span>{% endif %}
+                </a>
+                <div class="topbar-user">
+                    {{ request.user.get_full_name|default:request.user.username }}
+                    &middot;
+                    <a href="{% url 'logout' %}">Logout</a>
+                </div>
+            </div>
+        </header>
+
+        <div class="content">
+            {% if messages %}
+            <ul class="messages">
+                {% for message in messages %}
+                <li class="{{ message.tags }}">{{ message }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+{% endblock %}

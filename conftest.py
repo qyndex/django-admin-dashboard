@@ -17,6 +17,8 @@ def admin_user(db) -> User:
         username="admin",
         email="admin@example.com",
         password="adminpass123",
+        first_name="Admin",
+        last_name="User",
     )
 
 
@@ -36,4 +38,11 @@ def regular_user(db) -> User:
 def authed_client(api_client: APIClient, admin_user: User) -> APIClient:
     """DRF client authenticated as the admin superuser."""
     api_client.force_authenticate(user=admin_user)
+    return api_client
+
+
+@pytest.fixture
+def user_client(api_client: APIClient, regular_user: User) -> APIClient:
+    """DRF client authenticated as a regular user."""
+    api_client.force_authenticate(user=regular_user)
     return api_client

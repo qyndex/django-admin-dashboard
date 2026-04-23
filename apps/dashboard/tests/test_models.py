@@ -3,8 +3,25 @@ import datetime
 
 import pytest
 
-from apps.dashboard.factories import DepartmentFactory, EmployeeFactory, ProjectFactory, UserFactory
-from apps.dashboard.models import Department, Employee, Project
+from apps.dashboard.factories import (
+    ActivityFactory,
+    DashboardMetricFactory,
+    DepartmentFactory,
+    EmployeeFactory,
+    NotificationFactory,
+    ProjectFactory,
+    UserFactory,
+    UserProfileFactory,
+)
+from apps.dashboard.models import (
+    Activity,
+    DashboardMetric,
+    Department,
+    Employee,
+    Notification,
+    Project,
+    UserProfile,
+)
 
 
 @pytest.mark.django_db
@@ -124,3 +141,128 @@ class TestProjectModel:
         dept.delete()
         project.refresh_from_db()
         assert project.department is None
+
+
+@pytest.mark.django_db
+class TestUserProfileModel:
+    def test_str_shows_name_and_role(self) -> None:
+        user = UserFactory(first_name="Jane", last_name="Doe")
+        profile = UserProfileFactory(user=user, role=UserProfile.ROLE_MANAGER)
+        assert str(profile) == "Jane Doe (Manager)"
+
+    def test_default_role_is_viewer(self) -> None:
+        profile = UserProfileFactory()
+        assert profile.role == UserProfile.ROLE_VIEWER
+
+    def test_role_choices(self) -> None:
+        valid = {c[0] for c in UserProfile.ROLE_CHOICES}
+        assert UserProfile.ROLE_ADMIN in valid
+        assert UserProfile.ROLE_MANAGER in valid
+        assert UserProfile.ROLE_ANALYST in valid
+        assert UserProfile.ROLE_VIEWER in valid
+
+    def test_cascade_delete_on_user(self) -> None:
+        profile = UserProfileFactory()
+        profile.user.delete()
+        assert not UserProfile.objects.filter(pk=profile.pk).exists()
+
+    def test_department_null_on_delete(self) -> None:
+        dept = DepartmentFactory()
+        profile = UserProfileFactory(department=dept)
+        dept.delete()
+        profile.refresh_from_db()
+        assert profile.department is None
+
+
+@pytest.mark.django_db
+class TestDashboardMetricModel:
+    def test_str_shows_name_value_period(self) -> None:
+        metric = DashboardMetricFactory(name="Revenue", value=1000.50, period="monthly")
+        result = str(metric)
+        assert "Revenue" in result
+        assert "1000.5" in result
+        assert "Monthly" in result
+
+    def test_default_period_is_monthly(self) -> None:
+        metric = DashboardMetricFactory()
+        assert metric.period == DashboardMetric.PERIOD_MONTHLY
+
+    def test_default_change_percent_is_zero(self) -> None:
+        metric = DashboardMetricFactory(change_percent=0)
+        assert metric.change_percent == 0
+
+    def test_ordering_is_by_created_at_desc(self) -> None:
+        m1 = DashboardMetricFactory(name="First")
+        m2 = DashboardMetricFactory(name="Second")
+        ids = list(DashboardMetric.objects.values_list("id", flat=True))
+        assert ids[0] == m2.pk
+
+
+@pytest.mark.django_db
+class TestActivityModel:
+    def test_str_shows_user_and_action(self) -> None:
+        user = UserFactory(first_name="Alice", last_name="Smith")
+        activity = ActivityFactory(user=user, action=Activity.ACTION_CREATE)
+        result = str(activity)
+        assert "Alice Smith" in result
+        assert "Create" in result
+
+    def test_action_choices(self) -> None:
+        valid = {c[0] for c in Activity.ACTION_CHOICES}
+        assert Activity.ACTION_LOGIN in valid
+        assert Activity.ACTION_CREATE in valid
+        assert Activity.ACTION_DELETE in valid
+
+    def test_ip_address_nullable(self) -> None:
+        activity = ActivityFactory(ip_address=None)
+        assert activity.ip_address is None
+
+    def test_cascade_delete_on_user(self) -> None:
+        activity = ActivityFactory()
+        activity.user.delete()
+        assert not Activity.objects.filter(pk=activity.pk).exists()
+
+    def test_ordering_is_by_created_at_desc(self) -> None:
+        a1 = ActivityFactory()
+        a2 = ActivityFactory()
+        ids = list(Activity.objects.values_list("id", flat=True))
+        assert ids[0] == a2.pk
+
+
+@pytest.mark.django_db
+class TestNotificationModel:
+    def test_str_shows_read_status_and_title(self) -> None:
+        user = UserFactory(first_name="Bob", last_name="Jones")
+        notif = NotificationFactory(user=user, title="Alert!", read=False)
+        assert "[unread]" in str(notif)
+        assert "Alert!" in str(notif)
+
+    def test_str_shows_read_when_read(self) -> None:
+        notif = NotificationFactory(read=True, title="Done")
+        assert "[read]" in str(notif)
+
+    def test_default_read_is_false(self) -> None:
+        notif = NotificationFactory()
+        assert notif.read is False
+
+    def test_default_level_is_info(self) -> None:
+        notif = NotificationFactory()
+        assert notif.level == Notification.LEVEL_INFO
+
+    def test_level_choices(self) -> None:
+        valid = {c[0] for c in Notification.LEVEL_CHOICES}
+        assert Notification.LEVEL_INFO in valid
+        assert Notification.LEVEL_SUCCESS in valid
+        assert Notification.LEVEL_WARNING in valid
+        assert Notification.LEVEL_ERROR in valid
+
+    def test_cascade_delete_on_user(self) -> None:
+        notif = NotificationFactory()
+        notif.user.delete()
+        assert not Notification.objects.filter(pk=notif.pk).exists()
+
+    def test_ordering_is_by_created_at_desc(self) -> None:
+        n1 = NotificationFactory()
+        n2 = NotificationFactory()
+        ids = list(Notification.objects.values_list("id", flat=True))
+        assert ids[0] == n2.pk

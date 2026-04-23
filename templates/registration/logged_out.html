@@ -1,0 +1,10 @@
+{% extends "base_auth.html" %}
+
+{% block title %}Logged Out{% endblock %}
+
+{% block auth_content %}
+<h1>Logged Out</h1>
+<p class="subtitle">You have been signed out successfully.</p>
+
+<a href="{% url 'login' %}" class="btn btn-primary btn-block" style="margin-top: 1rem;">Sign In Again</a>
+{% endblock %}

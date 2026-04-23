@@ -1,0 +1,39 @@
+{% extends "base_dashboard.html" %}
+
+{% block title %}Notifications{% endblock %}
+{% block page_title %}Notifications{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display: flex; align-items: center; justify-content: space-between;">
+    <div>
+        <h1>Notifications</h1>
+        <p>{{ unread_count }} unread notification{{ unread_count|pluralize }}</p>
+    </div>
+    {% if unread_count %}
+    <a href="{% url 'dashboard:notifications-read-all' %}" class="btn btn-secondary">Mark All as Read</a>
+    {% endif %}
+</div>
+
+<div class="card">
+    {% for notification in notifications %}
+    <div class="notification-item {% if not notification.read %}unread{% endif %}">
+        <div class="notification-dot {{ notification.level }}"></div>
+        <div class="notification-content">
+            <h4>{{ notification.title }}</h4>
+            <p>{{ notification.message }}</p>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.25rem;">
+            <span class="notification-time">{{ notification.created_at|timesince }} ago</span>
+            {% if not notification.read %}
+            <a href="{% url 'dashboard:notification-read' notification.pk %}" class="btn btn-sm btn-outline">Mark Read</a>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="card-body" style="text-align: center; padding: 3rem;">
+        <p style="color: var(--color-text-muted); font-size: 1.1rem;">No notifications yet.</p>
+        <p style="color: var(--color-text-muted); margin-top: 0.5rem;">Run <code>python manage.py seed_data</code> to populate demo data.</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
