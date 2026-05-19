@@ -1,5 +1,6 @@
-"""Demo / Coolify settings — SQLite, no SSL redirect, works with no external DB."""
+"""Demo / Coolify settings — SQLite, WhiteNoise statics, works with no external DB."""
 import os
+import urllib.parse as _up
 
 from .base import *  # noqa: F401, F403
 
@@ -13,14 +14,17 @@ SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY", "django-demo-key-change-for-real-production-use"
 )
 
-# Use SQLite by default; override with individual DB_* vars or DATABASE_URL
-# for PostgreSQL in environments where a real DB is available.
+# -- Database selection ------------------------------------------------------
+# Priority:
+#   1. DATABASE_URL with postgres:// scheme  → real Postgres
+#   2. DB_NAME env vars                      → real Postgres
+#   3. Anything else (incl. sqlite:// or unset) → SQLite at /app/data/db.sqlite3
 _db_url = os.environ.get("DATABASE_URL", "")
-if _db_url:
-    # Minimal DATABASE_URL parsing (postgres://user:pass@host:port/dbname)
-    import urllib.parse as _up
+_parsed = _up.urlparse(_db_url) if _db_url else None
+_is_postgres_url = bool(_parsed and _parsed.scheme in {"postgres", "postgresql"})
 
-    _parsed = _up.urlparse(_db_url)
+if _is_postgres_url:
+    assert _parsed is not None
     DATABASES = {  # type: ignore[name-defined]  # noqa: F405
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -43,7 +47,8 @@ elif os.environ.get("DB_NAME"):
         }
     }
 else:
-    # Fall back to SQLite — zero config needed for the demo
+    # SQLite fallback — zero config needed for the demo.
+    # Covers DATABASE_URL=sqlite:///app.db and the unset case.
     DATABASES = {  # type: ignore[name-defined]  # noqa: F405
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -51,9 +56,12 @@ else:
         }
     }
 
-# Static files served by WhiteNoise or gunicorn in demo mode
+# -- Middleware --------------------------------------------------------------
+# WhiteNoise must come right after SecurityMiddleware so it can serve static
+# files in production without needing a separate webserver.
 MIDDLEWARE = [  # type: ignore[name-defined]  # noqa: F405
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -62,10 +70,29 @@ MIDDLEWARE = [  # type: ignore[name-defined]  # noqa: F405
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# No SSL redirect — Coolify handles TLS termination at the proxy layer
+# WhiteNoise-managed static files (compressed + cache-busted hashes)
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+# No SSL redirect — Coolify (Traefik) handles TLS termination at the proxy
+# layer; redirecting here would cause an infinite loop.
 SECURE_SSL_REDIRECT = False
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 
 # Allow Coolify's proxy to set the proto header
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# CSRF trust the proxied domain. Coolify deploys behind https://*.qyngent.com.
+CSRF_TRUSTED_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "CSRF_TRUSTED_ORIGINS",
+        "https://*.qyngent.com,https://*.demo.qyngent.com",
+    ).split(",")
+    if o.strip()
+]
