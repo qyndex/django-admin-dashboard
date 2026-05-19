@@ -1,0 +1,20 @@
+name: Deploy to Coolify
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy
+        env:
+          UUID: ${{ vars.COOLIFY_APP_UUID }}
+          TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          if [ -z "$UUID" ] || [ -z "$TOKEN" ]; then
+            echo "Missing COOLIFY_APP_UUID or COOLIFY_API_TOKEN"; exit 1
+          fi
+          curl -fsS -X GET \
+            "https://coolify.qyngent.com/api/v1/deploy?uuid=$UUID&force=false" \
+            -H "Authorization: Bearer $TOKEN"
